@@ -1,0 +1,36 @@
+#include <iostream>
+#include <numeric>
+#include <vector>
+
+#include "plugin_add.h"
+
+using namespace std;
+using namespace sdaa;
+
+template<typename T>
+__global__ void add_plugin_kernel(PluginAddData<T> data) {
+  for (int i = threadIdx; i < data.total_elements; i += 32) {
+    data.output[i] = (data.input1[i] + data.input2[i]) * data.alpha;
+  }
+}
+
+template<typename T>
+void PluginAddForwardImpl(void* input1, void* input2, void* output, float alpha, int total_elements,
+                      sdaaStream_t stream) {
+  PluginAddData<T> data;
+  data.input1 = static_cast<T*>(input1); 
+  data.input2 = static_cast<T*>(input2); 
+  data.output = static_cast<T*>(output); 
+  data.alpha = alpha;
+  data.total_elements = total_elements;
+  add_plugin_kernel<T><<<1, stream>>>(data);
+}
+
+void PluginAddForward(void* input1, void* input2, void* output, float alpha,
+                                      int total_elements, sdaaStream_t stream, const DataType dtype) {
+if (dtype == DATA_FLOAT) {
+    PluginAddForwardImpl<float>(input1, input2, output, alpha, total_elements, stream);
+} else {
+    std::cerr << "Unsupported dtype" <<std::endl;
+}
+}
